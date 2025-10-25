@@ -1,0 +1,144 @@
+const CHAT_URL = "https://tu-nombre-proyecto.vercel.app/api/proxy";
+const IMAGE_URL = "https://tu-nombre-proyecto.vercel.app/api/proxy";
+
+
+const chatBox = document.getElementById("chatBox");
+const userInput = document.getElementById("userInput");
+const sendBtn = document.getElementById("sendBtn");
+
+const crearBtn = document.getElementById("crearBtn");
+const asesorarBtn = document.getElementById("asesorarBtn");
+const aprenderBtn = document.getElementById("aprenderBtn");
+
+// Añadir mensaje al chat
+function addMessage(content, sender, isImage = false) {
+  const msg = document.createElement("div");
+  msg.classList.add("message", sender);
+
+  if (isImage) {
+    const img = document.createElement("img");
+    img.src = content;
+    img.alt = "Imagen generada por IA";
+    img.classList.add("generated-image");
+    msg.appendChild(img);
+
+    // Botón de descarga
+    const downloadBtn = document.createElement("button");
+    downloadBtn.textContent = "⬇️ Descargar imagen";
+    downloadBtn.classList.add("download-btn");
+    downloadBtn.onclick = () => {
+      const link = document.createElement("a");
+      link.href = content;
+      link.download = "arte_generado.png";
+      link.click();
+    };
+    msg.appendChild(downloadBtn);
+  } else {
+    msg.textContent = content;
+  }
+
+  chatBox.appendChild(msg);
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+// Función principal del bot
+async function botReply(userText) {
+  addMessage("🎨 Procesando tu idea artística...", "bot");
+
+  // Limpieza o detección de símbolos especiales
+  const cleanText = userText.replace(/[*#-]+/g, "").trim();
+
+  // Si el usuario pide una imagen o dibujo
+  if (
+    cleanText.toLowerCase().includes("imagen") ||
+    cleanText.toLowerCase().includes("dibujo") ||
+    cleanText.toLowerCase().includes("pintura") ||
+    cleanText.toLowerCase().includes("arte") ||
+    cleanText.toLowerCase().includes("flor") ||
+    cleanText.toLowerCase().includes("paisaje")
+  ) {
+    try {
+      const imgRes = await fetch(IMAGE_URL, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-image-1",
+          prompt: cleanText,
+          size: "512x512",
+          style: "artistic",
+        }),
+      });
+
+      const data = await imgRes.json();
+      const imageUrl = data.data?.[0]?.url;
+
+      if (imageUrl) {
+        addMessage(imageUrl, "bot", true);
+      } else {
+        addMessage("❌ No pude generar la imagen, intenta con otra descripción más artística.", "bot");
+      }
+    } catch (err) {
+      addMessage("⚠️ Error al generar la imagen. Revisa tu API Key o conexión.", "bot");
+    }
+    return;
+  }
+
+  // Si solo pide texto (asesoría o aprendizaje)
+  try {
+    const response = await fetch(CHAT_URL, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: "Eres DiseñaArte, un asistente experto en dibujo, pintura y creatividad. Responde como un artista profesional, ofreciendo explicaciones lógicas, inspiradoras y fáciles de comprender.",
+          },
+          { role: "user", content: cleanText },
+        ],
+        temperature: 0.8,
+      }),
+    });
+
+    const data = await response.json();
+    const botMessage = data.choices?.[0]?.message?.content || "❌ No se recibió respuesta.";
+    addMessage(botMessage, "bot");
+  } catch (error) {
+    console.error(error);
+    addMessage("⚠️ Error al conectar con OpenAI.", "bot");
+  }
+}
+
+// Enviar mensaje al hacer clic
+sendBtn.addEventListener("click", () => {
+  const text = userInput.value.trim();
+  if (!text) return;
+  addMessage(text, "user");
+  userInput.value = "";
+  botReply(text);
+});
+
+// Enviar con tecla Enter
+userInput.addEventListener("keypress", (e) => {
+  if (e.key === "Enter") sendBtn.click();
+});
+
+// Botones de modo
+crearBtn.addEventListener("click", () => {
+  botReply("🎨 Modo Crear Arte activado. Describe tu idea y generaré una pintura o dibujo para ti.");
+});
+
+asesorarBtn.addEventListener("click", () => {
+  botReply("🧠 Modo Asesorar Diseño activado. Cuéntame tu idea o estilo, y te brindaré una guía artística detallada.");
+});
+
+aprenderBtn.addEventListener("click", () => {
+  botReply("📚 Modo Aprender Arte activado. ¿Qué técnica o estilo te gustaría practicar hoy?");
+});
