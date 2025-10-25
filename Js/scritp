@@ -1,5 +1,5 @@
-const CHAT_URL = "https://tu-nombre-proyecto.vercel.app/api/proxy";
-const IMAGE_URL = "https://tu-nombre-proyecto.vercel.app/api/proxy";
+const CHAT_URL = " ";
+const IMAGE_URL = " ";
 
 
 const chatBox = document.getElementById("chatBox");
