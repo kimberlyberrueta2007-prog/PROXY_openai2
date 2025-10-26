@@ -1,30 +1,30 @@
-export default async function handler(req, res) {  
-  try {  
-    const body = await req.json();  
-    const { prompt, isImage } = body;  
+export default async function handler(req, res) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
 
-    const headers = {  
-      "Content-Type": "application/json",  
-      "Authorization": Bearer ${process.env.OPENAI_API_KEY},  
-    };  
+  const body = req.body;
+  let url = "https://api.openai.com/v1/chat/completions";
 
-    const url = isImage  
-      ? "https://api.openai.com/v1/images/generations"  
-      : "https://api.openai.com/v1/chat/completions";  
+  // 🔹 Si el modelo es de imágenes, cambia el endpoint
+  if (body.model && body.model.startsWith("gpt-image")) {
+    url = "https://api.openai.com/v1/images/generations";
+  }
 
-    const payload = isImage  
-      ? { model: "gpt-image-1", prompt, size: "512x512" }  
-      : { model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }] };  
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": Bearer ${process.env.OPENAI_API_KEY},
+      },
+      body: JSON.stringify(body),
+    });
 
-    const response = await fetch(url, {  
-      method: "POST",  
-      headers,  
-      body: JSON.stringify(payload),  
-    });  
-
-    const data = await response.json();  
-    res.status(200).json(data);  
-  } catch (error) {  
-    res.status(500).json({ error: error.message });  
-  }  
+    const data = await response.json();
+    return res.status(response.status).json(data);
+  } catch (error) {
+    console.error("Proxy error:", error);
+    return res.status(500).json({ error: "Error interno del proxy" });
+  }
 }
